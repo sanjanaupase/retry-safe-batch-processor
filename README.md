@@ -2,7 +2,7 @@
 
 A Java 17 command-line tool that reads a product CSV, processes rows concurrently, retries transient failures, skips rows completed in earlier runs, and writes permanent failures to a dead-letter file (`failed.csv`).
 
-## Why it's built this way
+## Design decisions
 
 **Idempotency via a completed-key log.** Batch jobs get rerun after partial failures, and reprocessing every row wastes work and can create duplicates. Each row is keyed by `sellerId|sku`. On success, the key is appended to `done.log`. On startup, those keys load into memory, and matching rows are skipped. Rerunning a finished file does no processing (100k rows in 0.6s).
 
