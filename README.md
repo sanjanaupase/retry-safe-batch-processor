@@ -6,7 +6,7 @@ A Java 17 command-line tool that reads a product CSV, processes rows concurrentl
 
 **Idempotency via a completed-key log.** Batch jobs get rerun after partial failures, and reprocessing every row wastes work and can create duplicates. Each row is keyed by `sellerId|sku`. On success, the key is appended to `done.log`. On startup, those keys load into memory, and matching rows are skipped. Rerunning a finished file does no processing (100k rows in 0.6s).
 
-**Buffered log writes.** The first version opened and appended to `done.log` for every row inside a `synchronized` method. All 8 threads queued on disk writes, and the run was slow. A single `BufferedWriter` opened at startup removes that per-row cost.
+**Buffered log writes.** The first version opened and appended to `done.log` for every row inside a `synchronized` method. That serializes the 8 threads on file writes and limits throughput. A single `BufferedWriter` opened at startup removes the per-row open/close cost. The slowest early run was caused by simulated retry sleeps, not the log; lowering the simulated failure rate fixed it.
 
 **Retries only for transient errors.** Retrying a bad price never succeeds, so permanent errors (`price <= 0`) fail immediately. Transient errors (timeouts) retry with exponential backoff (100ms, 200ms, 400ms) up to 3 times. Retrying everything would hide bad data and waste time.
 
