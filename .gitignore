@@ -25,3 +25,5 @@ replay_pid*
 done.log
 failed.csv
 data/large.csv
+data/medium.csv
+target/
