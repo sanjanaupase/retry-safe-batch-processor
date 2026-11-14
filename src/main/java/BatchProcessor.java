@@ -16,10 +16,12 @@ public class BatchProcessor {
     }
 
     static final Set<String> done = ConcurrentHashMap.newKeySet();
+    static BufferedWriter doneWriter;
     static final AtomicInteger accepted = new AtomicInteger(), skipped = new AtomicInteger(),
                                failed = new AtomicInteger(), retried = new AtomicInteger();
 
     public static void main(String[] args) throws Exception {
+        doneWriter = Files.newBufferedWriter(DONE, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         if (Files.exists(DONE)) done.addAll(Files.readAllLines(DONE));
 
         List<Row> rows = Files.readAllLines(Path.of(args[0])).stream().skip(1)
@@ -47,6 +49,7 @@ public class BatchProcessor {
 
         pool.shutdown();
         pool.awaitTermination(1, TimeUnit.HOURS);
+        doneWriter.close();
         Files.write(Path.of("failed.csv"), failures);
         System.out.printf("accepted=%d skipped=%d failed=%d retried=%d%n",
             accepted.get(), skipped.get(), failed.get(), retried.get());
@@ -68,10 +71,11 @@ public class BatchProcessor {
     // Stand-in for the real downstream write. Replace with your upsert call.
     static void process(Row r) throws Exception {
         if (Double.parseDouble(r.price()) <= 0) throw new IllegalArgumentException("price<=0");
-        if (ThreadLocalRandom.current().nextInt(5) == 0) throw new TransientException("simulated timeout");
+        if (ThreadLocalRandom.current().nextInt(1000) == 0) throw new TransientException("simulated timeout");
     }
 
     static synchronized void markDone(String key) throws IOException {
-        Files.writeString(DONE, key + "\n", StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        doneWriter.write(key);
+        doneWriter.newLine();
     }
 }
